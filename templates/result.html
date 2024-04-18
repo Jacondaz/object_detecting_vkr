@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css"/>
+  <title>Results</title>
+ </head>
+ <body>
+    <form action="/search" method="post" class="search_page">
+        <input name="name_cls" placeholder="Искать здесь..." type="search">
+        <button type="submit">Search</button>
+    </form>
+    <h2>Результат поиска</h2>
+    <p>{{ result }}</p>
+ </body>
+</html>

@@ -1,0 +1,49 @@
+.index {
+    position: relative;
+    width: 300px;
+    margin: 0;
+    left: 35%;
+    top: 400px;
+}
+
+.search_page{
+    position: relative;
+    width: 300px;
+    margin: 0;
+    left: 35%;
+    top: 50px;
+}
+
+input {
+    width: 600px;
+    height: 40px;
+    padding-left: 10px;
+    border: 2px solid #7BA7AB;
+    border-radius: 5px;
+    outline: none;
+    background: #ffffff;
+    color: #9E9C9C;
+}
+
+button {
+    position: absolute; 
+    top: 0;
+    left: 600px;
+    right: 0px;
+    width: 60px;
+    height: 40px;
+    border: none;
+    background: #7BA7AB;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+    color: #ffffff  
+}
+
+.index_text{
+    position: relative;
+    width: 660px;
+    margin: 0;
+    left: 35%;
+    top: 400px;
+    background-color: #e5e5e5;
+}

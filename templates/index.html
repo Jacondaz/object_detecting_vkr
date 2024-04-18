@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css"/>
+  <title>Main</title>
+ </head>
+ <body>
+    <form action="/search" method="post" class="index">
+        <input name="name_cls" placeholder="Искать здесь..." type="search">
+        <button type="submit">Search</button>
+    </form>
+    <div class="index_text">
+        <p>Примечание</p>
+        <p>Запрос может включать, как одиночное название класса, так и комбинированное, с использованием “&” и “|”</p>
+        <p>Символ & - позволяет найти видеоролик, на котором встречаются оба класса</p>
+        <p>Символ && - позволяет найти видеоролик, на котором встречаются оба класса в одном кадре</p>
+        <p>Символ | - позволяет найти видеоролик, на котором встречаются либо один, либо другой класс</p>
+    </div>
+ </body>
+</html>
