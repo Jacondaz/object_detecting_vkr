@@ -47,12 +47,10 @@ def and_search(alpha, list_with_collect):
         ans = list()
         for name in list_with_common:
             temp_elem = db[alpha[0].lower()].find({'name': f'{name}'})
-            temp_elem2 = db[list_with_collect[int(alpha[1].lower())]].find({'name': f'{name}'})
+            temp_elem2 = db[alpha[1].lower()].find({'name': f'{name}'})
             ans.append({"Name": name, 
                         "Class1": alpha[0], 
-                        "Time1": temp_elem[0]["time"],
                         "Class2": alpha[1],
-                        "Time2": temp_elem2[0]["time"]
                         })
     return ans
 
@@ -71,9 +69,8 @@ def and_and_search(alpha, list_with_collect):
             name1 = alpha[0]
             name2 = alpha[1]
             if times:
-                ans.append({"Name": name, 
-                            "Classes": f'{name1} && {name2}',
-                            "Time": times
+                ans.append({"name": name, 
+                            "Link":  "some_link"
                             })
             else:
                 return False
@@ -82,10 +79,11 @@ def and_and_search(alpha, list_with_collect):
 def or_search(alpha, list_with_collect):
     ans = list()
     for alp in alpha:
-        temp_dict = {"Class": alp}
+        temp_dict = {"class": alp}
         for coll in db[alp].find():
-            temp_dict["Name"] = coll["name"]
-            temp_dict["Time"] = coll["time"]
+            temp_dict["name"] = coll["name"]
+            temp_dict["link"] = coll["link"]
+            #temp_dict["Time"] = coll["time"]
         ans.append(temp_dict)
     return ans
 
@@ -126,8 +124,8 @@ def choose(expression: str):
     if len(symbol) == 0 and len(alpha) == 1:
         try:
             ans = list()
-            for coll in db[expression].find():
-                ans.append({"name": coll["name"], "time": coll["time"]})
+            for coll in db[alpha[0]].find():
+                ans.append({"name": coll["name"], "link": coll["link"]})
             return ans
         except (ValueError, IndexError):
             return False

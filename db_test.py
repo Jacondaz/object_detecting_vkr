@@ -2,9 +2,9 @@ from pymongo import MongoClient
 
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
-collect = db["Pudge"]
-dic ={
-    "name": "1",
-    "time": "1-18"
+coll = db["Pudge"]
+dic = {
+    "name": 1,
+    "link": "https://www.youtube.com"
 }
-collect.insert_one(dic)
+coll.insert_one(dic)

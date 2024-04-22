@@ -2,9 +2,53 @@
 <html>
  <head>
   <meta charset="utf-8">
-  <link rel="stylesheet" href="style.css"/>
   <title>Main</title>
  </head>
+ <style>
+
+.index {
+    position: fixed;
+    width: 300px;
+    margin: 0;
+    left: 35%;
+    top: 35%;
+}
+
+input {
+    width: 600px;
+    height: 40px;
+    padding-left: 10px;
+    border: 2px solid #7BA7AB;
+    border-radius: 5px;
+    outline: none;
+    background: #ffffff;
+    color: #9E9C9C;
+}
+
+button {
+    position: absolute; 
+    top: 0;
+    left: 600px;
+    right: 0px;
+    width: 60px;
+    height: 40px;
+    border: none;
+    background: #7BA7AB;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+    color: #ffffff  
+}
+
+.index_text{
+    position: fixed;
+    width: 660px;
+    margin: 0;
+    left: 35%;
+    top: 40%;
+    background-color: #e5e5e5;
+}
+
+ </style>
  <body>
     <form action="/search" method="post" class="index">
         <input name="name_cls" placeholder="Искать здесь..." type="search">
