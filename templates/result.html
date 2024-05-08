@@ -76,6 +76,7 @@ button {
     <div class="container">
         {% for elem in result %}
         <p class="text">{{elem["name"]}}<p>
+        <a href="/search_video/{{elem['id']}}" class="link" target="_blank">Открыть подробности о видео</a>
         <a href="{{elem['link']}}" class="text" target="_blank">Ссылка на youtube<p>
         {% endfor %}
     </div>

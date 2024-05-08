@@ -3,12 +3,19 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
+import youtube_dl
 
 app = FastAPI()
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
 templates = Jinja2Templates(directory="templates")
 
+def get_video_title(video_url):
+    ydl_opts = {'quiet': True, 'extract_flat': True}
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_url, download=False)
+        return info.get('title', None)
+    
 def find_common_times(time1, time2):
     comm_time = list()
     for i in time1:
@@ -37,7 +44,8 @@ def find_common_times(time1, time2):
     return comm_time
 
 def and_search(alpha, list_with_collect):
-
+    #заменить name на id
+    #доделать логику
     list_with_first_names = [coll["name"] for coll in db[alpha[0].lower()].find()]
     list_with_second_names = [coll["name"] for coll in db[alpha[1].lower()].find()]
     list_with_common = list(set(list_with_first_names) & set(list_with_second_names))
@@ -70,7 +78,8 @@ def and_and_search(alpha, list_with_collect):
             name2 = alpha[1]
             if times:
                 ans.append({"name": name, 
-                            "Link":  "some_link"
+                            "Link":  "some_link",
+                            "time": times
                             })
             else:
                 return False
@@ -81,9 +90,11 @@ def or_search(alpha, list_with_collect):
     for alp in alpha:
         temp_dict = {"class": alp}
         for coll in db[alp].find():
-            temp_dict["name"] = coll["name"]
+            name = get_video_title(coll["link"])
+            temp_dict["name"] = name
             temp_dict["link"] = coll["link"]
-            #temp_dict["Time"] = coll["time"]
+            temp_dict["time"] = coll["time"]
+            temp_dict["id"] = coll["id"]
         ans.append(temp_dict)
     return ans
 
@@ -125,8 +136,9 @@ def choose(expression: str):
         try:
             ans = list()
             for coll in db[alpha[0]].find():
-                ans.append({"name": coll["name"], "link": coll["link"]})
-            return ans
+                name = get_video_title(coll["link"])
+                ans.append({"name": name, "link": coll["link"], "time": coll["time"], "id": coll["id"]})
+            return ans, alpha
         except (ValueError, IndexError):
             return False
     elif len(alpha) == 0:
@@ -134,10 +146,10 @@ def choose(expression: str):
     elif len(alpha) == 2:
         if all(x.lower() in list_with_collections for x in alpha):
             if symbol[0] == '|' or symbol[0] == '&' and len(symbol) == 1:
-                return func[symbol[0]](alpha, list_with_collections)
+                return func[symbol[0]](alpha, list_with_collections), alpha
             elif len(symbol) == 2:
                 if all(sym == '&' for sym in symbol):
-                    return func['&&'](alpha, list_with_collections)
+                    return func['&&'](alpha, list_with_collections), alpha
         else:
             return False
     else:
@@ -151,7 +163,17 @@ def index(request: Request):
 
 @app.post("/search", response_class=HTMLResponse)
 def search_item(request: Request, name_cls: str = Form(...)):
-    answer = choose(name_cls)
+    answer, classes = choose(name_cls)
     if isinstance(answer, bool):
         return templates.TemplateResponse('result.html', {'request': request, "result": "Ошибка при поиске записей"})
-    return templates.TemplateResponse('result.html', {'request': request, "result": answer})
+    return templates.TemplateResponse('result.html', {'request': request, "result": answer, "classes": classes})
+
+@app.get("/search_video/{video_id}", response_class=HTMLResponse)
+def link_item(request: Request, video_id: str):
+    try:
+        #доделать дополнительные теги под видео
+        link = db["info_about_video"].find({"id": video_id})
+        link = link[0]["link"]
+        return templates.TemplateResponse('video.html', {'request':request, "link": link})
+    except Exception as e:
+        return str(e)
