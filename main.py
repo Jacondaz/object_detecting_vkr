@@ -3,18 +3,18 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
-import youtube_dl
+#import youtube_dl
 
 app = FastAPI()
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
 templates = Jinja2Templates(directory="templates")
 
-def get_video_title(video_url):
-    ydl_opts = {'quiet': True, 'extract_flat': True}
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=False)
-        return info.get('title', None)
+# def get_video_title(video_url):
+#     ydl_opts = {'quiet': True, 'extract_flat': True}
+#     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+#         info = ydl.extract_info(video_url, download=False)
+#         return info.get('title', None)
     
 def find_common_times(time1, time2):
     comm_time = list()
@@ -90,8 +90,8 @@ def or_search(alpha, list_with_collect):
     for alp in alpha:
         temp_dict = {"class": alp}
         for coll in db[alp].find():
-            name = get_video_title(coll["link"])
-            temp_dict["name"] = name
+            #name = get_video_title(coll["link"])
+            temp_dict["name"] = coll["name"]
             temp_dict["link"] = coll["link"]
             temp_dict["time"] = coll["time"]
             temp_dict["id"] = coll["id"]
@@ -136,8 +136,8 @@ def choose(expression: str):
         try:
             ans = list()
             for coll in db[alpha[0]].find():
-                name = get_video_title(coll["link"])
-                ans.append({"name": name, "link": coll["link"], "time": coll["time"], "id": coll["id"]})
+                #name = get_video_title(coll["link"])
+                ans.append({"name": coll["name"], "link": coll["link"], "time": coll["time"], "id": coll["id"]})
             return ans, alpha
         except (ValueError, IndexError):
             return False
@@ -166,14 +166,31 @@ def search_item(request: Request, name_cls: str = Form(...)):
     answer, classes = choose(name_cls)
     if isinstance(answer, bool):
         return templates.TemplateResponse('result.html', {'request': request, "result": "Ошибка при поиске записей"})
-    return templates.TemplateResponse('result.html', {'request': request, "result": answer, "classes": classes})
+    return templates.TemplateResponse('result.html', {'request': request, "result": answer})
 
 @app.get("/search_video/{video_id}", response_class=HTMLResponse)
 def link_item(request: Request, video_id: str):
     try:
         #доделать дополнительные теги под видео
-        link = db["info_about_video"].find({"id": video_id})
-        link = link[0]["link"]
-        return templates.TemplateResponse('video.html', {'request':request, "link": link})
+        tags = list()
+        link = db["info_about_video"].find({"id": video_id})[0]["link"]
+        list_with_collections = list(db.list_collection_names())
+        for class_ in list_with_collections:
+            for video in db[class_].find():
+                if video["id"] == video_id:
+                    tags.append(class_)
+                    break
+        return templates.TemplateResponse('video.html', {'request':request, "link": link, "tags": tags})
+    except Exception as e:
+        return str(e)
+    
+@app.post("/search_single/{tag}", response_class=HTMLResponse)
+def search_single(request: Request, tag: str):
+    try:
+        ans = list()
+        for coll in db[tag].find():
+            #name = get_video_title(coll["link"])
+            ans.append({"name": coll["name"], "link": coll["link"], "time": coll["time"], "id": coll["id"]})
+        return templates.TemplateResponse('result.html', {'request': request, "result": ans})
     except Exception as e:
         return str(e)

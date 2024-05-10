@@ -6,6 +6,39 @@
     left: 50%;
 }
 
+.result_page{
+    position: fixed;
+    width: 300px;
+    margin: 0;
+    left: 33%;
+    top: 50px;
+}
+
+input {
+    width: 600px;
+    height: 40px;
+    padding-left: 10px;
+    border: 2px solid #7BA7AB;
+    border-radius: 5px;
+    outline: none;
+    background: #ffffff;
+    color: #9E9C9C;
+}
+
+button {
+    position: absolute; 
+    top: 0;
+    left: 600px;
+    right: 0px;
+    width: 60px;
+    height: 40px;
+    border: none;
+    background: #7BA7AB;
+    border-radius: 0 5px 5px 0;
+    cursor: pointer;
+    color: #ffffff  
+}
+
 </style>
 <head>
     <meta charset="UTF-8">
@@ -13,8 +46,22 @@
     <title>YouTube Player</title>
 </head>
 <body>
+    <form action="/search" method="post" class="result_page">
+        <input name="name_cls" placeholder="Искать здесь..." type="search">
+        <button type="submit">Search</button>
+    </form>
+
     <div class="video_player">
     <iframe width="560" height="315" src="{{link}}" frameborder="0" allowfullscreen></iframe>
+    </div>
+
+    <div class="tags">
+        {% for tag in tags %}
+        <form action="/search_single/{{tag}}" method="post">
+            <input type="hidden" name="name_cls" value="{{tag}}">
+            <button type="submit">{{tag}}</button>
+        </form>
+        {% endfor %}
     </div>
 </body>
 </html>
