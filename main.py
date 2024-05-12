@@ -46,21 +46,25 @@ def find_common_times(time1, time2):
 def and_search(alpha, list_with_collect):
     #заменить name на id
     #доделать логику
-    list_with_first_names = [coll["name"] for coll in db[alpha[0].lower()].find()]
-    list_with_second_names = [coll["name"] for coll in db[alpha[1].lower()].find()]
+    list_with_first_names = [coll["id"] for coll in db[alpha[0]].find()]
+    list_with_second_names = [coll["id"] for coll in db[alpha[1]].find()]
     list_with_common = list(set(list_with_first_names) & set(list_with_second_names))
     if len(list_with_common) == 0:
         return False
     else:
         ans = list()
-        for name in list_with_common:
-            temp_elem = db[alpha[0].lower()].find({'name': f'{name}'})
-            temp_elem2 = db[alpha[1].lower()].find({'name': f'{name}'})
-            ans.append({"Name": name, 
-                        "Class1": alpha[0], 
-                        "Class2": alpha[1],
+        for name_id in list_with_common:
+            #temp_elem = db[alpha[0].lower()].find({'name': f'{name}'})
+            #temp_elem2 = db[alpha[1].lower()].find({'name': f'{name}'})
+            #need get name of function
+            ans.append({"id": name_id, 
+                        "name": "some_name",
+                        "link": "link",
+                        "class1": alpha[0], 
+                        "class2": alpha[1],
+                        "time": ...
                         })
-    return ans
+    return ans, "and"
 
 def and_and_search(alpha, list_with_collect):
     ans = list()
@@ -78,7 +82,7 @@ def and_and_search(alpha, list_with_collect):
             name2 = alpha[1]
             if times:
                 ans.append({"name": name, 
-                            "Link":  "some_link",
+                            "link":  "some_link",
                             "time": times
                             })
             else:
@@ -86,17 +90,18 @@ def and_and_search(alpha, list_with_collect):
     return ans
 
 def or_search(alpha, list_with_collect):
+    #done
     ans = list()
     for alp in alpha:
-        temp_dict = {"class": alp}
         for coll in db[alp].find():
             #name = get_video_title(coll["link"])
+            temp_dict = {"class": alp}
             temp_dict["name"] = coll["name"]
             temp_dict["link"] = coll["link"]
             temp_dict["time"] = coll["time"]
             temp_dict["id"] = coll["id"]
-        ans.append(temp_dict)
-    return ans
+            ans.append(temp_dict)
+    return ans, "or"
 
 def choose(expression: str):
 
@@ -138,18 +143,18 @@ def choose(expression: str):
             for coll in db[alpha[0]].find():
                 #name = get_video_title(coll["link"])
                 ans.append({"name": coll["name"], "link": coll["link"], "time": coll["time"], "id": coll["id"]})
-            return ans, alpha
+            return ans, "single"
         except (ValueError, IndexError):
             return False
     elif len(alpha) == 0:
         return False
     elif len(alpha) == 2:
         if all(x.lower() in list_with_collections for x in alpha):
-            if symbol[0] == '|' or symbol[0] == '&' and len(symbol) == 1:
-                return func[symbol[0]](alpha, list_with_collections), alpha
+            if (symbol[0] == '|' or symbol[0] == '&') and len(symbol) == 1:
+                return func[symbol[0]](alpha, list_with_collections)
             elif len(symbol) == 2:
                 if all(sym == '&' for sym in symbol):
-                    return func['&&'](alpha, list_with_collections), alpha
+                    return func['&&'](alpha, list_with_collections)
         else:
             return False
     else:
@@ -163,15 +168,15 @@ def index(request: Request):
 
 @app.post("/search", response_class=HTMLResponse)
 def search_item(request: Request, name_cls: str = Form(...)):
-    answer, classes = choose(name_cls)
+    answer, type_ = choose(name_cls)
     if isinstance(answer, bool):
         return templates.TemplateResponse('result.html', {'request': request, "result": "Ошибка при поиске записей"})
-    return templates.TemplateResponse('result.html', {'request': request, "result": answer})
+    #print(answer)
+    return templates.TemplateResponse('result.html', {'request': request, "result": answer, "type": type_})
 
 @app.get("/search_video/{video_id}", response_class=HTMLResponse)
 def link_item(request: Request, video_id: str):
     try:
-        #доделать дополнительные теги под видео
         tags = list()
         link = db["info_about_video"].find({"id": video_id})[0]["link"]
         list_with_collections = list(db.list_collection_names())

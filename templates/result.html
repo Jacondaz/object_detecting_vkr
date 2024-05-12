@@ -30,7 +30,8 @@ input {
     border-radius: 5px;
     outline: none;
     background: #ffffff;
-    color: #9E9C9C;
+    color: black;
+    font-size: 18px;
 }
 
 button {
@@ -44,7 +45,8 @@ button {
     background: #7BA7AB;
     border-radius: 0 5px 5px 0;
     cursor: pointer;
-    color: #ffffff  
+    color: #ffffff;
+    font-size: 15px;
 }
 
 .index_text{
@@ -58,13 +60,27 @@ button {
 
 .container{
     width: 660px;
-    height: 125px;
-    position: fixed;
-    top: 15%;
+    height: auto;
+    position: relative;
+    top: 150px;
     left: 33%;
-    margin-bottom: 50px;
+    padding-top: 5px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
     background-color: #7BA7AB;
     text-align: center;
+}
+
+.text{
+    font-size: 18px;
+    margin: 0px;
+    padding: 0px;
+    margin-bottom: 5px;
+}
+
+.link{
+    font-size: 18px;
+    color: #1812db;
 }
 
  </style>
@@ -73,12 +89,23 @@ button {
         <input name="name_cls" placeholder="Искать здесь..." type="search">
         <button type="submit">Search</button>
     </form>
-    <div class="container">
-        {% for elem in result %}
-        <p class="text">{{elem["name"]}}<p>
+    {% for elem in result %}
+    <div class="container" id="container">
+        <p class="text">Имя видеоролика: {{elem["name"]}}</p>
+
+            {% if type == "and" %}
+                <p class="text">Класс 1: {{elem["class1"]}}</p>
+                <p class="text">Класс 2: {{elem["class2"]}}</p>
+            {% endif %}
+
+            {% if type == "or" %}
+                <p class="text">Класс: {{elem["class"]}}</p>
+            {% endif %}
+
         <a href="/search_video/{{elem['id']}}" class="link" target="_blank">Открыть подробности о видео</a>
-        <a href="{{elem['link']}}" class="text" target="_blank">Ссылка на youtube<p>
-        {% endfor %}
+        <br>
+        <a href="{{elem['link']}}" class="link" target="_blank">Ссылка на youtube</a>
     </div>
+    {% endfor %}
  </body>
 </html>
