@@ -15,7 +15,14 @@ templates = Jinja2Templates(directory="templates")
 #     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
 #         info = ydl.extract_info(video_url, download=False)
 #         return info.get('title', None)
-    
+
+def create_video_player_url(url):
+    pattern = "https://www.youtube.com/embed/"
+    temp = url.split('?')[1]
+    temp = temp.split('&')[0]
+    temp = temp.split('=')[1]
+    return pattern + temp
+
 def find_common_times(time1, time2):
     comm_time = list()
     for i in time1:
@@ -179,6 +186,7 @@ def link_item(request: Request, video_id: str):
     try:
         tags = list()
         link = db["info_about_video"].find({"id": video_id})[0]["link"]
+        link = create_video_player_url(link)
         list_with_collections = list(db.list_collection_names())
         for class_ in list_with_collections:
             for video in db[class_].find():

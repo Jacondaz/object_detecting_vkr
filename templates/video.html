@@ -2,16 +2,20 @@
 <html lang="en">
 <style>
 
+.general{
+    margin: 0;
+    padding: 5px;
+}
+
 .video_player{
-    left: 50%;
+    margin: 20px auto;
+    height: 315px;
+    width: 560px;
 }
 
 .result_page{
-    position: fixed;
-    width: 300px;
-    margin: 0;
-    left: 33%;
-    top: 50px;
+    margin: 5px auto;
+    width: 665px;
 }
 
 input {
@@ -26,11 +30,7 @@ input {
     font-size: 18px;
 }
 
-button {
-    position: absolute; 
-    top: 0;
-    left: 600px;
-    right: 0px;
+.search_button {
     width: 60px;
     height: 40px;
     border: none;
@@ -39,6 +39,26 @@ button {
     cursor: pointer;
     color: #ffffff;
     font-size: 15px;
+    position: relative;
+    left: -5px;
+    top: -1px;
+}
+
+.tags-container {
+    height: 20px;
+    width: 700px;
+    display: flex;
+    margin: auto;
+}
+
+.tags button{
+    position: relative;
+    height: 25px;
+    width: auto;
+    padding: 5px;
+    margin-right: 5px;
+    background: #7BA7AB;
+    color: #ffffff;
 }
 
 </style>
@@ -48,22 +68,25 @@ button {
     <title>YouTube Player</title>
 </head>
 <body>
+
+<div class="general">
     <form action="/search" method="post" class="result_page">
         <input name="name_cls" placeholder="Искать здесь..." type="search">
-        <button type="submit">Search</button>
+        <button type="submit" class="search_button">Search</button>
     </form>
 
     <div class="video_player">
-    <iframe width="560" height="315" src="{{link}}" frameborder="0" allowfullscreen></iframe>
+        <iframe width="560" height="315" src="{{link}}" frameborder="0" allowfullscreen></iframe>
     </div>
 
-    <div class="tags">
+    <div class="tags-container">
         {% for tag in tags %}
-        <form action="/search_single/{{tag}}" method="post">
+        <form action="/search_single/{{tag}}" method="post" class="tags">
             <input type="hidden" name="name_cls" value="{{tag}}">
             <button type="submit">{{tag}}</button>
         </form>
         {% endfor %}
     </div>
+</div>
 </body>
 </html>
