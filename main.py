@@ -3,18 +3,26 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
-import youtube_dl
+import requests
+from bs4 import BeautifulSoup
 
 app = FastAPI()
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
 templates = Jinja2Templates(directory="templates")
 
-def get_video_title(video_url):
-    ydl_opts = {'quiet': True, 'extract_flat': True}
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(video_url, download=False)
-        return info.get('title', None)
+def get_youtube_video_title(video_url):
+
+    response = requests.get(video_url)
+    if response.status_code != 200:
+        raise Exception(f"Failed to load page, status code: {response.status_code}")
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title_tag = soup.find("title")
+    
+    if title_tag:
+        title = title_tag.string
+        title = title.replace(" - YouTube", "")
+        return title
 
 def create_video_player_url(url):
     pattern = "https://www.youtube.com/embed/"
@@ -59,15 +67,15 @@ def and_search(alpha, list_with_collect):
     else:
         ans = list()
         for name_id in list_with_common:
-            link = db['info_about_video'].find_one({"id": name_id})[0]['link']
-            name = get_video_title(link)
+            link = db['info_about_video'].find_one({"id": name_id})['link']
+            name = get_youtube_video_title(link)
             ans.append({"id": name_id, 
                         "name": name,
                         "link": link,
                         "class1": alpha[0], 
                         "class2": alpha[1],
-                        "time1": db[alpha[0].lower()].find_one({"id": name_id})[0]["time"],
-                        "time2": db[alpha[1].lower()].find_one({"id": name_id})[0]["time"]
+                        "time1": db[alpha[0].lower()].find_one({"id": name_id})["time"],
+                        "time2": db[alpha[1].lower()].find_one({"id": name_id})["time"]
                         })
     return ans, "and"
 
@@ -86,8 +94,8 @@ def and_and_search(alpha, list_with_collect):
             name1 = alpha[0]
             name2 = alpha[1]
             if times:
-                link = db['info_about_video'].find_one({"id": name})[0]['link']
-                name = get_video_title(link)
+                link = db['info_about_video'].find_one({"id": name})['link']
+                name = get_youtube_video_title(link)
                 ans.append({"name": name, 
                             "link": link,
                             "time": times
@@ -100,8 +108,8 @@ def or_search(alpha):
     ans = list()
     for alp in alpha:
         for coll in db[alp.lower()].find():
-            link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
-            name = get_video_title(link)
+            link = db['info_about_video'].find_one({"id": coll["id"]})['link']
+            name = get_youtube_video_title(link)
             temp_dict = {"class": alp}
             temp_dict["name"] = name
             temp_dict["link"] = link
@@ -122,7 +130,9 @@ def choose(expression: str):
     symbol = list()
 
     list_with_collections = list(db.list_collection_names())
-    #list_with_collections.remove('already_processed')
+    list_with_collections.remove('already_processed')
+    list_with_collections.remove('answer')
+    list_with_collections.remove('info_about_video')
 
     temp_sym = expression[0]
 
@@ -147,8 +157,8 @@ def choose(expression: str):
         try:
             ans = list()
             for coll in db[alpha[0].lower()].find():
-                link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
-                name = get_video_title(link)
+                link = db['info_about_video'].find_one({"id": coll["id"]})['link']
+                name = get_youtube_video_title(link)
                 ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
             return ans, "single"
         except (ValueError, IndexError):
@@ -177,6 +187,7 @@ def index(request: Request):
 def search_item(request: Request, name_cls: str = Form(...)):
     global answer, type_
     answer, type_ = choose(name_cls)
+    db['answer'].insert_one({'answer':answer})
     if isinstance(answer, bool):
         return templates.TemplateResponse('result.html', {'request': request, "result": "Ошибка при поиске записей"})
     return templates.TemplateResponse('result.html', {'request': request, "result": answer, "type": type_})
@@ -187,12 +198,19 @@ def link_item(request: Request, video_id: str):
         tags = list()
         link = db["info_about_video"].find({"id": video_id})[0]["link"]
         link = create_video_player_url(link)
+
         list_with_collections = list(db.list_collection_names())
+        list_with_collections.remove('already_processed')
+        list_with_collections.remove('answer')
+        list_with_collections.remove('info_about_video')
+        
         for class_ in list_with_collections:
             for video in db[class_].find():
                 if video["id"] == video_id:
                     tags.append(class_)
                     break
+        time = None
+        answer = [ans for ans in db['answer'].find()][-1]['answer']
         for element in answer:
             if element["id"] == video_id:
                 time = element["time"]
@@ -205,9 +223,10 @@ def link_item(request: Request, video_id: str):
 def search_single(request: Request, tag: str):
     try:
         ans = list()
-        for coll in db[tag].find():
-            link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
-            name = get_video_title(link)
+        for coll in db[tag.lower()].find():
+            link = db['info_about_video'].find_one({"id": coll["id"]})['link']
+            print(link)
+            name = get_youtube_video_title(link)
             ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
         return templates.TemplateResponse('result.html', {'request': request, "result": ans})
     except Exception as e:
