@@ -3,18 +3,18 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
-#import youtube_dl
+import youtube_dl
 
 app = FastAPI()
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
 templates = Jinja2Templates(directory="templates")
 
-# def get_video_title(video_url):
-#     ydl_opts = {'quiet': True, 'extract_flat': True}
-#     with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-#         info = ydl.extract_info(video_url, download=False)
-#         return info.get('title', None)
+def get_video_title(video_url):
+    ydl_opts = {'quiet': True, 'extract_flat': True}
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_url, download=False)
+        return info.get('title', None)
 
 def create_video_player_url(url):
     pattern = "https://www.youtube.com/embed/"
@@ -51,60 +51,60 @@ def find_common_times(time1, time2):
     return comm_time
 
 def and_search(alpha, list_with_collect):
-    #заменить name на id
-    #доделать логику
-    list_with_first_names = [coll["id"] for coll in db[alpha[0]].find()]
-    list_with_second_names = [coll["id"] for coll in db[alpha[1]].find()]
+    list_with_first_names = [coll["id"] for coll in db[alpha[0].lower()].find()]
+    list_with_second_names = [coll["id"] for coll in db[alpha[1].lower()].find()]
     list_with_common = list(set(list_with_first_names) & set(list_with_second_names))
     if len(list_with_common) == 0:
         return False
     else:
         ans = list()
         for name_id in list_with_common:
-            #temp_elem = db[alpha[0].lower()].find({'name': f'{name}'})
-            #temp_elem2 = db[alpha[1].lower()].find({'name': f'{name}'})
-            #need get name of function
+            link = db['info_about_video'].find_one({"id": name_id})[0]['link']
+            name = get_video_title(link)
             ans.append({"id": name_id, 
-                        "name": "some_name",
-                        "link": "link",
+                        "name": name,
+                        "link": link,
                         "class1": alpha[0], 
                         "class2": alpha[1],
-                        "time": ...
+                        "time1": db[alpha[0].lower()].find_one({"id": name_id})[0]["time"],
+                        "time2": db[alpha[1].lower()].find_one({"id": name_id})[0]["time"]
                         })
     return ans, "and"
 
 def and_and_search(alpha, list_with_collect):
     ans = list()
-    list_with_first_names = [coll["name"] for coll in db[alpha[0].lower()].find()]
-    list_with_second_names = [coll["name"] for coll in db[alpha[1].lower()].find()]
+    list_with_first_names = [coll["id"] for coll in db[alpha[0].lower()].find()]
+    list_with_second_names = [coll["id"] for coll in db[alpha[1].lower()].find()]
     list_with_common = list(set(list_with_first_names) & set(list_with_second_names))
     if len(list_with_common) == 0:
         return False
     else:
         for name in list_with_common:
-            t1 = db[alpha[0].lower()].find({'name': f'{name}'})
-            t2 = db[alpha[1].lower()].find({'name': f'{name}'})
+            t1 = db[alpha[0].lower()].find({'id': f'{name}'})
+            t2 = db[alpha[1].lower()].find({'id': f'{name}'})
             times = find_common_times(t1[0]['time'], t2[0]['time'])
             name1 = alpha[0]
             name2 = alpha[1]
             if times:
+                link = db['info_about_video'].find_one({"id": name})[0]['link']
+                name = get_video_title(link)
                 ans.append({"name": name, 
-                            "link":  "some_link",
+                            "link": link,
                             "time": times
                             })
             else:
                 return False
     return ans
 
-def or_search(alpha, list_with_collect):
-    #done
+def or_search(alpha):
     ans = list()
     for alp in alpha:
-        for coll in db[alp].find():
-            #name = get_video_title(coll["link"])
+        for coll in db[alp.lower()].find():
+            link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
+            name = get_video_title(link)
             temp_dict = {"class": alp}
-            temp_dict["name"] = coll["name"]
-            temp_dict["link"] = coll["link"]
+            temp_dict["name"] = name
+            temp_dict["link"] = link
             temp_dict["time"] = coll["time"]
             temp_dict["id"] = coll["id"]
             ans.append(temp_dict)
@@ -123,7 +123,6 @@ def choose(expression: str):
 
     list_with_collections = list(db.list_collection_names())
     #list_with_collections.remove('already_processed')
-    list_with_collections = [x.lower() for x in list_with_collections]
 
     temp_sym = expression[0]
 
@@ -147,9 +146,10 @@ def choose(expression: str):
     if len(symbol) == 0 and len(alpha) == 1:
         try:
             ans = list()
-            for coll in db[alpha[0]].find():
-                #name = get_video_title(coll["link"])
-                ans.append({"name": coll["name"], "link": coll["link"], "time": coll["time"], "id": coll["id"]})
+            for coll in db[alpha[0].lower()].find():
+                link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
+                name = get_video_title(link)
+                ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
             return ans, "single"
         except (ValueError, IndexError):
             return False
@@ -175,10 +175,10 @@ def index(request: Request):
 
 @app.post("/search", response_class=HTMLResponse)
 def search_item(request: Request, name_cls: str = Form(...)):
+    global answer, type_
     answer, type_ = choose(name_cls)
     if isinstance(answer, bool):
         return templates.TemplateResponse('result.html', {'request': request, "result": "Ошибка при поиске записей"})
-    #print(answer)
     return templates.TemplateResponse('result.html', {'request': request, "result": answer, "type": type_})
 
 @app.get("/search_video/{video_id}", response_class=HTMLResponse)
@@ -193,7 +193,11 @@ def link_item(request: Request, video_id: str):
                 if video["id"] == video_id:
                     tags.append(class_)
                     break
-        return templates.TemplateResponse('video.html', {'request':request, "link": link, "tags": tags})
+        for element in answer:
+            if element["id"] == video_id:
+                time = element["time"]
+                break
+        return templates.TemplateResponse('video.html', {'request':request, "link": link, "tags": tags, "time": time})
     except Exception as e:
         return str(e)
     
@@ -202,8 +206,9 @@ def search_single(request: Request, tag: str):
     try:
         ans = list()
         for coll in db[tag].find():
-            #name = get_video_title(coll["link"])
-            ans.append({"name": coll["name"], "link": coll["link"], "time": coll["time"], "id": coll["id"]})
+            link = db['info_about_video'].find_one({"id": coll["id"]})[0]['link']
+            name = get_video_title(link)
+            ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
         return templates.TemplateResponse('result.html', {'request': request, "result": ans})
     except Exception as e:
         return str(e)
