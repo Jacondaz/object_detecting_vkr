@@ -3,26 +3,16 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse
 from pymongo import MongoClient
-import requests
-from bs4 import BeautifulSoup
 
 app = FastAPI()
 client = MongoClient("mongodb://localhost:27017/")
 db = client["video_base"]
 templates = Jinja2Templates(directory="templates")
 
-def get_youtube_video_title(video_url):
-
-    response = requests.get(video_url)
-    if response.status_code != 200:
-        raise Exception(f"Failed to load page, status code: {response.status_code}")
-    soup = BeautifulSoup(response.content, 'html.parser')
-    title_tag = soup.find("title")
-    
-    if title_tag:
-        title = title_tag.string
-        title = title.replace(" - YouTube", "")
-        return title
+def convert_seconds_to_minutes(seconds):
+    minutes = seconds // 60
+    remaining_seconds = seconds % 60
+    return f"{minutes}:{remaining_seconds:02d}"
 
 def create_video_player_url(url):
     pattern = "https://www.youtube.com/embed/"
@@ -68,14 +58,37 @@ def and_search(alpha, list_with_collect):
         ans = list()
         for name_id in list_with_common:
             link = db['info_about_video'].find_one({"id": name_id})['link']
-            name = get_youtube_video_title(link)
+            name = db['info_about_video'].find_one({"id": name_id})['name']
+            time1 = db[alpha[0].lower()].find_one({"id": name_id})["time"]
+            time2 = db[alpha[1].lower()].find_one({"id": name_id})["time"]
+            time_formatted1 = []
+            time_formatted2 = []
+
+            for entry in time1:
+                if '-' in entry:
+                    start, end = map(int, entry.split('-'))
+                    start_formatted = convert_seconds_to_minutes(start)
+                    end_formatted = convert_seconds_to_minutes(end)
+                    time_formatted1.append(f"{start_formatted}-{end_formatted}")
+                else:
+                    time_formatted1.append(convert_seconds_to_minutes(int(entry)))
+                
+            for entry in time2:
+                if '-' in entry:
+                    start, end = map(int, entry.split('-'))
+                    start_formatted = convert_seconds_to_minutes(start)
+                    end_formatted = convert_seconds_to_minutes(end)
+                    time_formatted2.append(f"{start_formatted}-{end_formatted}")
+                else:
+                    time_formatted2.append(convert_seconds_to_minutes(int(entry)))
+
             ans.append({"id": name_id, 
                         "name": name,
                         "link": link,
                         "class1": alpha[0], 
                         "class2": alpha[1],
-                        "time1": db[alpha[0].lower()].find_one({"id": name_id})["time"],
-                        "time2": db[alpha[1].lower()].find_one({"id": name_id})["time"]
+                        "time1": time_formatted1,
+                        "time2": time_formatted2
                         })
     return ans, "and"
 
@@ -95,21 +108,21 @@ def and_and_search(alpha, list_with_collect):
             name2 = alpha[1]
             if times:
                 link = db['info_about_video'].find_one({"id": name})['link']
-                name = get_youtube_video_title(link)
+                name = db['info_about_video'].find_one({"id": name})['name']
                 ans.append({"name": name, 
                             "link": link,
                             "time": times
                             })
             else:
                 return False
-    return ans
+    return ans, "and_and"
 
 def or_search(alpha):
     ans = list()
     for alp in alpha:
         for coll in db[alp.lower()].find():
             link = db['info_about_video'].find_one({"id": coll["id"]})['link']
-            name = get_youtube_video_title(link)
+            name = db['info_about_video'].find_one({"id": coll["id"]})['name']
             temp_dict = {"class": alp}
             temp_dict["name"] = name
             temp_dict["link"] = link
@@ -121,7 +134,7 @@ def or_search(alpha):
 def choose(expression: str):
 
     func = {
-        '|': lambda x, y: or_search(x, y),
+        '|': lambda x, y: or_search(x),
         '&': lambda x, y: and_search(x, y),
         '&&': lambda x, y: and_and_search(x, y)
     }
@@ -136,17 +149,12 @@ def choose(expression: str):
 
     temp_sym = expression[0]
 
-    # | - или
-    # & - и
-
     for i in range(1, len(expression)):
         if expression[i].isalpha():
             temp_sym += expression[i]
             if i == len(expression) - 1:
                 alpha.append(temp_sym)
                 temp_sym = ''
-        elif expression[i] == ' ':
-            continue
         else:
             if temp_sym != '':
                 alpha.append(temp_sym)
@@ -158,7 +166,7 @@ def choose(expression: str):
             ans = list()
             for coll in db[alpha[0].lower()].find():
                 link = db['info_about_video'].find_one({"id": coll["id"]})['link']
-                name = get_youtube_video_title(link)
+                name = db['info_about_video'].find_one({"id": coll["id"]})['name']
                 ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
             return ans, "single"
         except (ValueError, IndexError):
@@ -167,13 +175,24 @@ def choose(expression: str):
         return False
     elif len(alpha) == 2:
         if all(x.lower() in list_with_collections for x in alpha):
-            if (symbol[0] == '|' or symbol[0] == '&') and len(symbol) == 1:
+            if ('|' in symbol or '&' in symbol):
                 return func[symbol[0]](alpha, list_with_collections)
             elif len(symbol) == 2:
-                if all(sym == '&' for sym in symbol):
+                if symbol.count('&') == 2:
                     return func['&&'](alpha, list_with_collections)
+            elif ' ' in symbol:
+                return func['&&'](alpha, list_with_collections)
         else:
             return False
+    elif len(alpha) == 3:
+        if alpha[1].lower() == 'and' or alpha[1].lower() == 'or':
+            temp = list()
+            temp.append(alpha[0])
+            temp.append(alpha[2])
+            if alpha[1].lower() == 'and':
+                return func['&'](temp, list_with_collections)
+            else:
+                return func['|'](temp, list_with_collections)
     else:
         return False
 
@@ -185,7 +204,6 @@ def index(request: Request):
 
 @app.post("/search", response_class=HTMLResponse)
 def search_item(request: Request, name_cls: str = Form(...)):
-    global answer, type_
     answer, type_ = choose(name_cls)
     db['answer'].insert_one({'answer':answer})
     if isinstance(answer, bool):
@@ -209,13 +227,29 @@ def link_item(request: Request, video_id: str):
                 if video["id"] == video_id:
                     tags.append(class_)
                     break
-        time = None
         answer = [ans for ans in db['answer'].find()][-1]['answer']
         for element in answer:
             if element["id"] == video_id:
-                time = element["time"]
+                if len(element) == 7:
+                    return templates.TemplateResponse('video.html', {'request':request, 
+                                                                     "link": link, 
+                                                                     "tags": tags, 
+                                                                     "time1": element['time1'],
+                                                                     "time2": element["time2"],
+                                                                     "type": 2})
+                else:
+                    time_entries = element["time"]
+                    time_formatted = []
+                    for entry in time_entries:
+                        if '-' in entry:
+                            start, end = map(int, entry.split('-'))
+                            start_formatted = convert_seconds_to_minutes(start)
+                            end_formatted = convert_seconds_to_minutes(end)
+                            time_formatted.append(f"{start_formatted}-{end_formatted}")
+                        else:
+                            time_formatted.append(convert_seconds_to_minutes(int(entry)))
                 break
-        return templates.TemplateResponse('video.html', {'request':request, "link": link, "tags": tags, "time": time})
+        return templates.TemplateResponse('video.html', {'request':request, "link": link, "tags": tags, "time": time_formatted, "type":1})
     except Exception as e:
         return str(e)
     
@@ -225,9 +259,20 @@ def search_single(request: Request, tag: str):
         ans = list()
         for coll in db[tag.lower()].find():
             link = db['info_about_video'].find_one({"id": coll["id"]})['link']
-            print(link)
-            name = get_youtube_video_title(link)
-            ans.append({"name": name, "link": link, "time": coll["time"], "id": coll["id"]})
+            name = db['info_about_video'].find_one({"id": coll["id"]})['name']
+
+            time_entries = coll["time"]
+            time_formatted = []
+            for entry in time_entries:
+                if '-' in entry:
+                    start, end = map(int, entry.split('-'))
+                    start_formatted = convert_seconds_to_minutes(start)
+                    end_formatted = convert_seconds_to_minutes(end)
+                    time_formatted.append(f"{start_formatted}-{end_formatted}")
+                else:
+                    time_formatted.append(convert_seconds_to_minutes(int(entry)))
+
+            ans.append({"name": name, "link": link, "time": time_formatted, "id": coll["id"]})
         return templates.TemplateResponse('result.html', {'request': request, "result": ans})
     except Exception as e:
         return str(e)

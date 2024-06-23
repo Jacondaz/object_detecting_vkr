@@ -61,6 +61,30 @@ input {
     color: #ffffff;
 }
 
+.time-container{
+    margin: auto;
+    height: 20px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 700px;
+    margin: auto;
+}
+
+.time-item {
+    position: relative;
+    margin-bottom: 5px;
+    margin-right: 5px;
+    padding: 5px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    width: auto;
+    padding: 5px;
+    margin: auto;
+    margin-top: 10px;
+}
+
 </style>
 <head>
     <meta charset="UTF-8">
@@ -87,6 +111,26 @@ input {
         </form>
         {% endfor %}
     </div>
+
+    <div class ="time-container">
+        {% if type == 1 %}
+            {% for tm in time %}
+            <div class="time-item">{{ tm }}</div>
+            {% endfor %}
+        {% endif %}
+
+        {% if type == 2 %}
+            {% for tm in time1 %}
+            <div class="time-item">{{ tm }}</div>
+            {% endfor %}
+            <br>
+            <br>
+            {% for tm in time2 %}
+            <div class="time-item">{{ tm }}</div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
 </div>
 </body>
 </html>

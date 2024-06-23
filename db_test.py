@@ -1,21 +1,20 @@
-import requests
-from bs4 import BeautifulSoup
 
-def get_youtube_video_title(video_url):
+def detect(expression):
+    alpha = list()
+    symbol = list()
+    temp_sym = expression[0]
+    for i in range(1, len(expression)):
+            if expression[i].isalpha():
+                temp_sym += expression[i]
+                if i == len(expression) - 1:
+                    alpha.append(temp_sym)
+                    temp_sym = ''
+            else:
+                if temp_sym != '':
+                    alpha.append(temp_sym)
+                symbol.append(expression[i])
+                temp_sym = ''
+    return alpha, symbol
 
-    response = requests.get(video_url)
-    if response.status_code != 200:
-        raise Exception(f"Failed to load page, status code: {response.status_code}")
-    soup = BeautifulSoup(response.content, 'html.parser')
-    title_tag = soup.find("title")
-    
-    if title_tag:
-        title = title_tag.string
-        title = title.replace(" - YouTube", "")
-        return title
-    else:
-        raise Exception("Title tag not found")
-    
-video_url = 'https://www.youtube.com/watch?v=LhHm781jpqk'
-title = get_youtube_video_title(video_url)
-print(f"Название видео: {title}")
+test_req = 'mouse & horse'
+print(detect(test_req))
